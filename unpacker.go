@@ -201,6 +201,19 @@ func (u *Unpacker) FetchString(n uint64, s *string) *Unpacker {
 	})
 }
 
+// self use
+// implement SerializationReader.ReadString() in C#
+func (u *Unpacker) ReadString(s *string) *Unpacker {
+	return u.errFilter(func() {
+		var n byte
+		n, u.err = u.ShiftByte()
+		if n == 11 && u.err == nil {
+			u.FetchByte(&n)
+			u.FetchString(uint64(n), s)
+		}
+	})
+}
+
 // StringWithUint16Prefix read 2 bytes as string length, then read N bytes,
 // convert it to string and set it to s.
 func (u *Unpacker) StringWithUint16Prefix(s *string) *Unpacker {
