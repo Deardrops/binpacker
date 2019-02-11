@@ -3,12 +3,13 @@ package binpacker
 import (
 	"bytes"
 	"io"
+	"strings"
 	"testing"
 
 	"math"
 
-	"github.com/stretchr/testify/assert"
 	"encoding/binary"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestReader wraps a []byte and returns reads of a specific length.
@@ -178,6 +179,18 @@ func TestShiftString(t *testing.T) {
 	s, err := u.ShiftString(2)
 	assert.Equal(t, err, nil, "Has error.")
 	assert.Equal(t, s, "Hi", "string error.")
+}
+
+func TestFetchVarString(t *testing.T) {
+	buf := new(bytes.Buffer)
+	p := NewPacker(binary.BigEndian, buf)
+	u := NewUnpacker(binary.BigEndian, buf)
+	testString := strings.Repeat("OvO", 999)
+	p.PushVarString(testString)
+	var s string
+	u.FetchVarString(&s)
+	assert.Equal(t, u.err, nil, "Has error.")
+	assert.Equal(t, s, testString, "string error.")
 }
 
 func TestRead(t *testing.T) {

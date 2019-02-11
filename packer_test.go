@@ -6,8 +6,8 @@ import (
 
 	"math"
 
-	"github.com/stretchr/testify/assert"
 	"encoding/binary"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPushByte(t *testing.T) {
@@ -104,6 +104,14 @@ func TestPushString(t *testing.T) {
 	p.PushString("Hi")
 	assert.Equal(t, p.Error(), nil, "Has error.")
 	assert.Equal(t, b.Bytes(), []byte{'H', 'i'}, "string error.")
+}
+
+func TestPushVarString(t *testing.T) {
+	b := new(bytes.Buffer)
+	p := NewPacker(binary.BigEndian, b)
+	p.PushVarString("Hi")
+	assert.Equal(t, p.Error(), nil, "Has error.")
+	assert.Equal(t, b.Bytes(), []byte{0x0b, 0x02, 'H', 'i'}, "string error.")
 }
 
 func TestCombinedPush(t *testing.T) {

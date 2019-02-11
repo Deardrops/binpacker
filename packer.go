@@ -106,6 +106,30 @@ func (p *Packer) PushString(s string) *Packer {
 	})
 }
 
+func (p *Packer) PushVarString(s string) *Packer {
+	return p.errFilter(func() {
+		length := len(s)
+		if length == 0 {
+			p.PushByte(0x00)
+			return
+		}
+		p.PushByte(0x0b)
+		v := uint64(length)
+		for {
+			c := uint8(v & 0x7f)
+			v >>= 7
+			if v != 0 {
+				c |= 0x80
+			}
+			p.PushUint8(c)
+			if c&0x80 == 0 {
+				break
+			}
+		}
+		p.PushString(s)
+	})
+}
+
 func (p *Packer) errFilter(f func()) *Packer {
 	if p.err == nil {
 		f()

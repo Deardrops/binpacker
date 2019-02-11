@@ -2,6 +2,7 @@ package binpacker
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -201,15 +202,73 @@ func (u *Unpacker) FetchString(n uint64, s *string) *Unpacker {
 	})
 }
 
-// self use
-// implement SerializationReader.ReadString() in C#
-func (u *Unpacker) ReadString(s *string) *Unpacker {
+// self use, fetch a variable string
+// implement function SerializationReader.ReadString() in C#
+func (u *Unpacker) FetchVarString(s *string) *Unpacker {
 	return u.errFilter(func() {
 		var n byte
 		n, u.err = u.ShiftByte()
-		if n == 11 && u.err == nil {
-			u.FetchByte(&n)
-			u.FetchString(uint64(n), s)
+		if n != 0x0b || u.err != nil {
+			return
+		}
+		var x uint64
+		var p uint
+		n, u.err = u.ShiftByte()
+		for i := 1; n >= 0x80; i++ {
+			if i > 9 || i == 9 && n > 1 {
+				u.err = errors.New("fetch variable string overflowed")
+			}
+			x |= uint64(n&0x7f) << p
+			p += 7
+			n, u.err = u.ShiftByte()
+		}
+		bytesLen := x | uint64(n)<<p
+		*s, u.err = u.ShiftString(bytesLen)
+	})
+}
+
+// self use, fetch an Integer - Double pair
+// implement
+func (u *Unpacker) FetchIntDoublePair(d *map[int32]float64) *Unpacker {
+	return u.errFilter(func() {
+		var count int32
+		count, u.err = u.ShiftInt32()
+		if u.err != nil {
+			return
+		}
+		for n := 0; n < int(count); n++ {
+			var (
+				typ byte
+				i   int32
+				f   float64
+			)
+			if typ, u.err = u.ShiftByte(); typ != 8 {
+				return
+			}
+			if i, u.err = u.ShiftInt32(); i < 0 {
+				return
+			}
+			if typ, u.err = u.ShiftByte(); typ != 13 {
+				return
+			}
+			if f, u.err = u.ShiftFloat64(); f < 0 {
+				return
+			}
+			(*d)[i] = f
+		}
+	})
+}
+
+// self use, fetch a Boolean in 1 byte
+// implement
+func (u *Unpacker) FetchBool(b *bool) *Unpacker {
+	return u.errFilter(func() {
+		var tmp byte
+		tmp, u.err = u.ShiftByte()
+		if tmp == 0 {
+			*b = false
+		} else {
+			*b = true
 		}
 	})
 }
